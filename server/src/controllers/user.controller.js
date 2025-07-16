@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 import User from "../models/user.model.js";
+import transporter from "../config/nodemailer.js";
 
 /**
  * @desc Register a new user
@@ -11,8 +12,6 @@ import User from "../models/user.model.js";
 
 export const register = async (req, res) => {
   const { name, email, password } = req.body;
-
-  console.log(name, email, password);
 
   if (!name || !email || !password) {
     return res.status(400).json({
@@ -44,6 +43,16 @@ export const register = async (req, res) => {
       sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
+    // welcome email
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: email,
+      subject: "Welcome to Our RAD Tech",
+      text: `Welcome to Rad-tech. Your account had been created with email id: ${email}`,
+    };
+
+    await transporter.sendMail(mailOptions);
 
     return res.status(201).json({
       success: true,

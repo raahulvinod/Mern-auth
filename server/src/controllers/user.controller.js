@@ -166,7 +166,7 @@ export const logout = async (req, res) => {
 
 export const sendVerifyOtp = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId } = req.user;
 
     if (!userId) {
       return res.status(400).json({
@@ -221,6 +221,66 @@ export const sendVerifyOtp = async (req, res) => {
       .json({ success: true, message: "Verification OTP sent to email." });
   } catch (error) {
     console.error("sendVerifyOtp Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+};
+
+/**
+ * @desc    Verify user's email with OTP
+ * @route   POST /api/auth/verify-email
+ * @access  Private
+ */
+
+export const verifyEmail = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const { userId } = req.user;
+
+    if (!userId || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: !userId ? "User ID is required." : "OTP is required.",
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    if (
+      !user.verifyOtp ||
+      user.verifyOtp !== otp ||
+      user.verifyOtpExpiredAt < Date.now()
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          user.verifyOtpExpiredAt < Date.now()
+            ? "OTP has expired. Please request a new one."
+            : "Invalid OTP.",
+      });
+    }
+
+    // Mark account as verified and clear OTP data
+    user.isAccountVerified = true;
+    user.verifyOtp = "";
+    user.verifyOtpExpiredAt = 0;
+
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Email verified successfully." });
+  } catch (error) {
+    console.error("verifyEmail Error:", error.message);
     return res.status(500).json({
       success: false,
       message: "Server error. Please try again later.",

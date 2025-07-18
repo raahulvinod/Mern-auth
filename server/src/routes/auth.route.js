@@ -7,8 +7,8 @@ import {
   sendResetOtp,
   sendVerifyOtp,
   verifyEmail,
-} from "../controllers/user.controller.js";
-import authMiddleware from "../middleware/authMIddleware.js";
+} from "../controllers/auth.controller.js";
+import authMiddleware from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 

@@ -287,3 +287,135 @@ export const verifyEmail = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Send password reset OTP to user's email
+ * @route   POST /api/auth/send-reset-otp
+ * @access  Public
+ */
+
+export const sendResetOtp = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.json({ success: false, message: "Email is required" });
+  }
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Generate 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+
+    // Save OTP and expiry (24 hours)
+    user.resetOtp = otp;
+    user.resetOtpExpiredAt = Date.now() + 15 * 60 * 1000;
+
+    await user.save();
+
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: user.email,
+      subject: "Password Reset - OTP",
+      html: `
+    <div style="max-width: 600px; margin: auto; padding: 20px; font-family: 'Segoe UI', sans-serif; background-color: #f9f9f9; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <div style="text-align: center;">
+        <h2 style="color: #333;">🔐 Password Reset Request</h2>
+        <p style="font-size: 16px; color: #555;">Hello <strong>${user.name}</strong>,</p>
+        <p style="font-size: 16px; color: #555;">We received a request to reset your password.</p>
+      </div>
+
+      <div style="margin: 30px 0; text-align: center;">
+        <p style="font-size: 16px; color: #333; margin-bottom: 10px;">Use the OTP below to reset your password:</p>
+        <h1 style="font-size: 36px; color: #007BFF; letter-spacing: 6px;">${otp}</h1>
+        <p style="font-size: 14px; color: #999; margin-top: 10px;">This OTP is valid for <strong>15 Minutes</strong>.</p>
+      </div>
+
+      <div style="font-size: 14px; color: #888; text-align: center; margin-top: 40px;">
+        <p>If you did not request this, you can safely ignore this email.</p>
+        <p>Thank you,<br><strong>RAD Tech</strong></p>
+      </div>
+    </div>
+  `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res.status(201).json({
+      success: true,
+      message: "Reset OTP send to your email.",
+    });
+  } catch (error) {
+    console.error("sendResetOtp Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+};
+
+/**
+ * @desc    Reset user password using OTP
+ * @route   POST /api/auth/reset-password
+ * @access  Public
+ */
+export const resetPassword = async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  if (!email || !otp || !newPassword) {
+    return res.json({
+      success: false,
+      message: "Email, OTP and New password are required.",
+    });
+  }
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    const isOtpExpired =
+      user.resetOtpExpiredAt && user.resetOtpExpiredAt < Date.now();
+    const isOtpValid = user.resetOtp && user.resetOtp === otp;
+
+    if (!isOtpValid || isOtpExpired) {
+      return res.status(400).json({
+        success: false,
+        message: isOtpExpired
+          ? "OTP has expired. Please request a new one."
+          : "Invalid OTP. Please check and try again.",
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    user.resetOtp = "";
+    user.resetOtpExpiredAt = 0;
+    user.password = hashedPassword;
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password has been reset successfully.",
+    });
+  } catch (error) {
+    console.error("resetPassword Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+};

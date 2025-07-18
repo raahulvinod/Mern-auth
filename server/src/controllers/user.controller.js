@@ -157,3 +157,73 @@ export const logout = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc Send OTP to user for account verification
+ * @route POST /api/auth/send-verify-otp
+ * @access Private
+ */
+
+export const sendVerifyOtp = async (req, res) => {
+  try {
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required.",
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    if (user.isAccountVerified) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Account is already verified" });
+    }
+
+    // Generate 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+
+    // Save OTP and expiry (24 hours)
+    user.verifyOtp = otp;
+    user.verifyOtpExpiredAt = Date.now() + 24 * 60 * 60 * 1000;
+
+    await user.save();
+
+    const mailOptions = {
+      from: process.env.SENDER_EMAIL,
+      to: user.email,
+      subject: "Verify Your Account - OTP Code",
+      html: `
+        <div style="font-family: Arial, sans-serif;">
+          <h2>Verify Your Account</h2>
+          <p>Hello <strong>${user.name}</strong>,</p>
+          <p>Your OTP is:</p>
+          <h3>${otp}</h3>
+          <p>This OTP is valid for 24 hours.</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Verification OTP sent to email." });
+  } catch (error) {
+    console.error("sendVerifyOtp Error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Server error. Please try again later.",
+    });
+  }
+};

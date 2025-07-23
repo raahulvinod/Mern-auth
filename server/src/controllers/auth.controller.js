@@ -120,6 +120,7 @@ export const login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        isAccountVerified: user.isAccountVerified,
       },
     });
   } catch (error) {
@@ -175,7 +176,9 @@ export const sendVerifyOtp = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select(
+      "-password -verifyOtp -verifyOtpExpiredAt -resetOtp -resetOtpExpiredAt"
+    );
 
     if (!user) {
       return res.status(404).json({
@@ -216,9 +219,10 @@ export const sendVerifyOtp = async (req, res) => {
 
     await transporter.sendMail(mailOptions);
 
-    return res
-      .status(200)
-      .json({ success: true, message: "Verification OTP sent to email." });
+    return res.status(200).json({
+      success: true,
+      message: "Verification OTP sent to email.",
+    });
   } catch (error) {
     console.error("sendVerifyOtp Error:", error.message);
     return res.status(500).json({
@@ -246,7 +250,7 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).select("-password");
 
     if (!user) {
       return res.status(404).json({
@@ -278,7 +282,7 @@ export const verifyEmail = async (req, res) => {
 
     return res
       .status(200)
-      .json({ success: true, message: "Email verified successfully." });
+      .json({ success: true, message: "Email verified successfully.", user });
   } catch (error) {
     console.error("verifyEmail Error:", error.message);
     return res.status(500).json({

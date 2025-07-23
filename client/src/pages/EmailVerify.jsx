@@ -3,16 +3,22 @@ import { assets } from "../assets/assets";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { useContext } from "react";
+import { AppContext } from "../context/AppContext";
+import { useEffect } from "react";
 
 const EmailVerify = () => {
   const navigate = useNavigate();
   const inputRefs = useRef([]);
+
+  const { setUserData, userData, isLoggedin } = useContext(AppContext);
 
   const handleInput = (e, index) => {
     if (e.target.value.length > 0 && index < inputRefs.current.length - 1) {
       inputRefs.current[index + 1].focus();
     }
   };
+
   const handleKeyDown = (e, index) => {
     if (e.key === "Backspace" && e.target.value === "" && index > 0) {
       inputRefs.current[index - 1].focus();
@@ -42,20 +48,20 @@ const EmailVerify = () => {
         { withCredentials: true }
       );
 
-      console.log(data);
-
       if (data.success) {
         toast.success(data.message);
+        setUserData(data.user);
         navigate("/");
       }
     } catch (error) {
       console.log("verifyEmail Error", error);
-      const message =
-        error?.response?.data?.message ||
-        "Something went wrong. Please try again.";
-      toast.error(message);
+      toast.error(error?.response?.data?.message);
     }
   };
+
+  useEffect(() => {
+    isLoggedin && userData && userData.isAccountVerified && navigate("/");
+  }, [isLoggedin, userData]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-200 to-purple-400">

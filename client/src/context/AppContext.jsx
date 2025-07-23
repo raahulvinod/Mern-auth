@@ -23,6 +23,7 @@ export const AppContextProvider = ({ children }) => {
 
       if (data.success) {
         setUserData(data.user);
+        setIsLoggedin(true);
       } else {
         setUserData(null);
       }
@@ -31,6 +32,7 @@ export const AppContextProvider = ({ children }) => {
       console.error("getAuthStats Error", error.message);
       toast.error("Something went wrong. Please try again.");
       setUserData(null);
+      setIsLoggedin(false);
     }
   };
 

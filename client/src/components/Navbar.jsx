@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
 import { useContext } from "react";
 import { AppContext } from "../context/AppContext";
@@ -44,8 +44,13 @@ const Navbar = () => {
   };
 
   return (
-    <div className="w-full flex justify-between items-center p-4 sm:p-6 absolute top-0">
-      <img src={assets.logo} alt="" className="w-28 sm:w-32" />
+    <div className="w-full flex justify-between items-center p-4 sm:p-6 absolute top-0 cursor-pointer">
+      <img
+        src={assets.logo}
+        alt=""
+        className="w-28 sm:w-32"
+        onClick={() => navigate("/")}
+      />
       {userData ? (
         <button className="w-8 h-8 flex justify-center items-center rounded-full bg-black text-white relative group">
           {userData.name[0].toUpperCase()}
